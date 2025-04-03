@@ -10,8 +10,8 @@ const LEETCODE_SESSION = process.env.LEETCODE_SESSION;
 const LEETCODE_CF_CLEARANCE = process.env.LEETCODE_CF_CLEARANCE;
 
 // Additional cookie values from environment variables
-const GR_CS1 = process.env["87b5a3c3f1a55520_gr_cs1"];
-const GR_LAST_SENT_CS1 = process.env["87b5a3c3f1a55520_gr_last_sent_cs1"];
+const GR_CS1 = process.env["E_87b5a3c3f1a55520_gr_cs1"];
+const GR_LAST_SENT_CS1 = process.env["E_87b5a3c3f1a55520_gr_last_sent_cs1"];
 const INGRESSCOOKIE = process.env.INGRESSCOOKIE;
 const STRIPE_MID = process.env.__stripe_mid;
 const GA = process.env._ga;
