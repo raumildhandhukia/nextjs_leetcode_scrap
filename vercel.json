@@ -2,13 +2,13 @@
   "version": 2,
   "functions": {
     "src/app/api/scrape/route.ts": {
-      "memory": 3008,
+      "memory": 1024,
       "maxDuration": 60
     }
   },
   "env": {
     "PUPPETEER_CACHE_DIR": "/tmp",
     "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true",
-    "NODE_OPTIONS": "--max-old-space-size=3008"
+    "NODE_OPTIONS": "--max-old-space-size=1024"
   }
 }
