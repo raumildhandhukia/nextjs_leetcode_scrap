@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
+    }
+  ],
+  "functions": {
+    "src/app/api/scrape/route.ts": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  },
+  "env": {
+    "PUPPETEER_CACHE_DIR": "/tmp"
+  }
+}
