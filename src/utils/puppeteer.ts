@@ -10,15 +10,15 @@ const LEETCODE_SESSION = process.env.LEETCODE_SESSION;
 const LEETCODE_CF_CLEARANCE = process.env.LEETCODE_CF_CLEARANCE;
 
 // Additional cookie values from environment variables
-const GR_CS1 = process.env["E_87b5a3c3f1a55520_gr_cs1"];
-const GR_LAST_SENT_CS1 = process.env["E_87b5a3c3f1a55520_gr_last_sent_cs1"];
+const GR_CS1 = process.env.E_87b5a3c3f1a55520_gr_cs1;
+const GR_LAST_SENT_CS1 = process.env.E_87b5a3c3f1a55520_gr_last_sent_cs1;
 const INGRESSCOOKIE = process.env.INGRESSCOOKIE;
 const STRIPE_MID = process.env.__stripe_mid;
 const GA = process.env._ga;
 const GR_USER_ID = process.env.gr_user_id;
 const IP_CHECK = process.env.ip_check;
 
-// Print environment variables for debugging
+// Print environment variables for debuggings
 console.log('Environment Variables:');
 console.log('LEETCODE_CSRFTOKEN:', LEETCODE_CSRFTOKEN ? '✓ Set' : '✗ Not set');
 console.log('LEETCODE_SESSION:', LEETCODE_SESSION ? '✓ Set' : '✗ Not set');
