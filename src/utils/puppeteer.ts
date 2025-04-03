@@ -39,7 +39,19 @@ let browserInstance: Browser | null = null;
 
 // Function to get the browser instance
 async function getBrowserInstance(): Promise<Browser> {
-  if (browserInstance) {
+  // In Vercel serverless, always create a new browser instance
+  // This helps avoid Target closed errors due to browser state issues
+  if (isServerless) {
+    if (browserInstance) {
+      try {
+        await browserInstance.close();
+      } catch {
+        // Ignore errors when closing browser
+      }
+      browserInstance = null;
+    }
+  } else if (browserInstance) {
+    // For local development, try to reuse the browser instance
     try {
       // Check if the browser is still usable
       await browserInstance.version();
@@ -72,13 +84,14 @@ async function getBrowserInstance(): Promise<Browser> {
       browserInstance = await puppeteer.launch({
         args: [...chromium.args, ...browserArgs],
         defaultViewport: {
-          width: 1280,
-          height: 800,
-          deviceScaleFactor: 1,  // Reduced for better performance
+          width: 800,  // Reduced for lower memory usage
+          height: 600, // Reduced for lower memory usage
+          deviceScaleFactor: 1,
         },
         executablePath: await chromium.executablePath(),
         headless: true,
-        timeout: 30000           // Increase timeout for browser launch
+        timeout: 60000,          // Increase timeout for browser launch
+        dumpio: false            // Disable dumping protocol messages to console
       });
     } else {
       // Local development environment - use system Chrome
@@ -266,82 +279,114 @@ export async function getPage() {
 export async function fetchLeetCodePage(url: string) {
   console.log(`Fetching LeetCode page: ${url}`);
   let page = null;
+  let retries = 3; // Number of retries for Target closed errors
   
-  try {
-    console.log('Initializing browser...');
-    const browserSetup = await getPage();
-    // We need the browser reference for logging but don't use it directly
-    // const browser = browserSetup.browser;
-    page = browserSetup.page;
-    
-    console.log('Browser initialized successfully');
-    
-    // Simplified request handling for serverless environment
-    // Only intercept if not in serverless to reduce memory usage
-    if (!isServerless) {
-      await page.setRequestInterception(true);
+  while (retries > 0) {
+    try {
+      console.log(`Initializing browser... (Attempts remaining: ${retries})`);
+      const browserSetup = await getPage();
+      page = browserSetup.page;
       
-      page.on('request', request => {
-        console.log(`>> Request: ${request.method()} ${request.url()}`);
-        request.continue();
+      console.log('Browser initialized successfully');
+      
+      // In serverless, disable all unnecessary features to save memory
+      if (isServerless) {
+        // Block unnecessary resource types to save memory
+        await page.setRequestInterception(true);
+        page.on('request', request => {
+          const resourceType = request.resourceType();
+          if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
+            request.abort();
+          } else {
+            request.continue();
+          }
+        });
+      } else {
+        // In development, log requests and responses
+        await page.setRequestInterception(true);
+        page.on('request', request => {
+          console.log(`>> Request: ${request.method()} ${request.url()}`);
+          request.continue();
+        });
+        
+        page.on('response', response => {
+          console.log(`<< Response: ${response.status()} ${response.url()}`);
+        });
+      }
+      
+      // Set minimal headers
+      await page.setExtraHTTPHeaders({
+        'referer': 'https://leetcode.com/'
       });
       
-      page.on('response', response => {
-        console.log(`<< Response: ${response.status()} ${response.url()}`);
+      // Navigate with minimal wait condition for serverless
+      console.log(`Navigating to ${url}`);
+      const response = await page.goto(url, { 
+        waitUntil: 'domcontentloaded', // Fastest option
+        timeout: 25000 // Reduced timeout
       });
-    }
-    
-    // Set referrer to mimic same-origin navigation
-    await page.setExtraHTTPHeaders({
-      'referer': 'https://leetcode.com/'
-    });
-    
-    // Navigate to the URL with a longer timeout but simpler wait condition for serverless
-    console.log(`Navigating to ${url}`);
-    const response = await page.goto(url, { 
-      waitUntil: isServerless ? 'domcontentloaded' : 'networkidle0',
-      timeout: 30000 // Reduced timeout for serverless environments
-    });
-    
-    if (!response) {
-      throw new Error('No response received');
-    }
-    
-    const statusCode = response.status();
-    console.log(`Response status code: ${statusCode}`);
-    
-    if (statusCode >= 400) {
-      throw new Error(`HTTP error: ${statusCode}`);
-    }
-    
-    // Get the page content with a timeout
-    console.log('Getting page content...');
-    const htmlContent = await page.content();
-    
-    // Print content length for debugging
-    console.log(`Content length: ${htmlContent.length}`);
-    
-    // In serverless, we don't close the browser, just the page
-    // This allows browser reuse across requests
-    console.log('Closing page...');
-    await page.close();
-    page = null;
-    
-    return { htmlContent, statusCode };
-  } catch (error) {
-    console.error(`Puppeteer error: ${error instanceof Error ? error.message : String(error)}`);
-    console.error(error instanceof Error && error.stack ? error.stack : 'No stack trace available');
-    
-    // Make sure page is closed even if there's an error
-    if (page) {
-      try {
-        console.log('Closing page after error...');
-        await page.close();
-      } catch (closeError) {
-        console.error(`Error closing page: ${closeError instanceof Error ? closeError.message : String(closeError)}`);
+      
+      if (!response) {
+        throw new Error('No response received');
+      }
+      
+      const statusCode = response.status();
+      console.log(`Response status code: ${statusCode}`);
+      
+      if (statusCode >= 400) {
+        throw new Error(`HTTP error: ${statusCode}`);
+      }
+      
+      // Get the page content
+      console.log('Getting page content...');
+      const htmlContent = await page.content();
+      
+      // Print content length for debugging
+      console.log(`Content length: ${htmlContent.length}`);
+      
+      // Always close the page
+      console.log('Closing page...');
+      await page.close();
+      page = null;
+      
+      return { htmlContent, statusCode };
+    } catch (error) {
+      retries--;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`Puppeteer error: ${errorMessage}`);
+      
+      if (error instanceof Error && error.stack) {
+        console.error(error.stack);
+      }
+      
+      // Check if it's a Target closed error
+      if (errorMessage.includes('Target closed') && retries > 0) {
+        console.log(`Target closed error detected, retrying... (${retries} attempts left)`);
+        // Force browser recreation on next attempt
+        browserInstance = null;
+        // Wait a bit before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        continue;
+      }
+      
+      // Make sure page is closed even if there's an error
+      if (page) {
+        try {
+          console.log('Closing page after error...');
+          await page.close();
+        } catch (closeError) {
+          console.error(`Error closing page: ${closeError instanceof Error ? closeError.message : String(closeError)}`);
+        }
+        page = null;
+      }
+      
+      // If we've exhausted all retries, return error
+      if (retries === 0) {
+        return { htmlContent: null, statusCode: 500 };
       }
     }
-    
-    return { htmlContent: null, statusCode: 500 };
   }
+  
+  // This should never be reached due to the return in the catch block
+  return { htmlContent: null, statusCode: 500 };
 }
