@@ -5,7 +5,7 @@ import { extractCompanyTags } from '@/utils/companyTagExtractor';
 
 export const config = {
   runtime: 'nodejs',
-  maxDuration: 60, // Extend the function timeout to 60 seconds
+  maxDuration: 300, // Extend the function timeout to 5 minutes for Puppeteer operations
 };
 
 export async function GET(request: NextRequest) {
