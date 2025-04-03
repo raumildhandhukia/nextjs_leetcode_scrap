@@ -47,7 +47,7 @@ export async function getPage() {
     '--disable-gpu',                                  // Disable GPU acceleration
     '--disable-setuid-sandbox',
     '--disable-accelerated-2d-canvas',
-    // '--single-process',                               // Important for serverless
+                     
     '--no-zygote',                                    // Important for serverless
     '--ignore-certificate-errors',
     '--disable-extensions'
