@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchLeetCodePage } from '@/utils/puppeteer';
 import { extractCompanyTags } from '@/utils/companyTagExtractor';
-import debugEnvironmentVariables from '@/utils/debugEnv';
+// import debugEnvironmentVariables from '@/utils/debugEnv';
 
 export const config = {
   runtime: 'edge',
@@ -11,7 +11,7 @@ export const config = {
 export async function GET(request: NextRequest) {
   try {
     // Debug environment variables
-    debugEnvironmentVariables();
+    // debugEnvironmentVariables();
     
     // Get the URL from the query parameters
     const url = request.nextUrl.searchParams.get('url');
