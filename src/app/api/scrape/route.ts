@@ -4,8 +4,8 @@ import { extractCompanyTags } from '@/utils/companyTagExtractor';
 // import debugEnvironmentVariables from '@/utils/debugEnv';
 
 export const config = {
-  runtime: 'edge',
-  regions: ['iad1'], // US East (N. Virginia)
+  runtime: 'nodejs',
+  maxDuration: 60, // Extend the function timeout to 60 seconds
 };
 
 export async function GET(request: NextRequest) {

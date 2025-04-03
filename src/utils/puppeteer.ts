@@ -23,8 +23,8 @@ console.log('Environment Variables:');
 console.log('LEETCODE_CSRFTOKEN:', LEETCODE_CSRFTOKEN ? '✓ Set' : '✗ Not set');
 console.log('LEETCODE_SESSION:', LEETCODE_SESSION ? '✓ Set' : '✗ Not set');
 console.log('LEETCODE_CF_CLEARANCE:', LEETCODE_CF_CLEARANCE ? '✓ Set' : '✗ Not set');
-console.log('87b5a3c3f1a55520_gr_cs1:', GR_CS1 ? '✓ Set' : '✗ Not set');
-console.log('87b5a3c3f1a55520_gr_last_sent_cs1:', GR_LAST_SENT_CS1 ? '✓ Set' : '✗ Not set');
+console.log('E_87b5a3c3f1a55520_gr_cs1:', GR_CS1 ? '✓ Set' : '✗ Not set');
+console.log('E_87b5a3c3f1a55520_gr_last_sent_cs1:', GR_LAST_SENT_CS1 ? '✓ Set' : '✗ Not set');
 console.log('INGRESSCOOKIE:', INGRESSCOOKIE ? '✓ Set' : '✗ Not set');
 console.log('__stripe_mid:', STRIPE_MID ? '✓ Set' : '✗ Not set');
 console.log('_ga:', GA ? '✓ Set' : '✗ Not set');
@@ -37,7 +37,7 @@ const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_VERSI
 export async function getPage() {
   let browser;
   
-  // Common browser arguments optimized for web scraping
+  // Common browser arguments optimized for web scraping in serverless environments
   const browserArgs = [
     '--disable-blink-features=AutomationControlled',  // Hide automation
     '--no-sandbox',
@@ -46,37 +46,53 @@ export async function getPage() {
     '--disable-dev-shm-usage',                        // Helps with memory issues
     '--disable-gpu',                                  // Disable GPU acceleration
     '--disable-setuid-sandbox',
-    '--disable-accelerated-2d-canvas'
+    '--disable-accelerated-2d-canvas',
+    '--single-process',                               // Important for serverless
+    '--no-zygote',                                    // Important for serverless
+    '--ignore-certificate-errors',
+    '--disable-extensions'
   ];
   
-  if (isServerless) {
-    // Serverless environment configuration
-    browser = await puppeteer.launch({
-      args: [...chromium.args, ...browserArgs],
-      defaultViewport: {
-        width: 1280,
-        height: 800,
-        deviceScaleFactor: 2,  // Retina display simulation
-      },
-      executablePath: await chromium.executablePath(),
-      headless: chromium.headless,
-    });
-  } else {
-    // Local development environment - use system Chrome
-    browser = await puppeteer.launch({
-      headless: true,
-      executablePath: process.platform === 'darwin' 
-        ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' // macOS path
-        : process.platform === 'win32'
-          ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' // Windows path
-          : '/usr/bin/google-chrome', // Linux path
-      args: browserArgs,
-      defaultViewport: {
-        width: 1280,
-        height: 800,
-        deviceScaleFactor: 2,  // Retina display simulation
-      },
-    });
+  try {
+    if (isServerless) {
+      // Serverless environment configuration with enhanced error handling
+      console.log('Launching browser in serverless mode...');
+      browser = await puppeteer.launch({
+        args: [...chromium.args, ...browserArgs],
+        defaultViewport: {
+          width: 1280,
+          height: 800,
+          deviceScaleFactor: 1,  // Reduced for better performance
+        },
+        executablePath: await chromium.executablePath(),
+        headless: true,
+        timeout: 30000           // Increase timeout for browser launch
+      });
+    } else {
+      // Local development environment - use system Chrome
+      console.log('Launching browser in local development mode...');
+      browser = await puppeteer.launch({
+        headless: true,
+        executablePath: process.platform === 'darwin' 
+          ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' // macOS path
+          : process.platform === 'win32'
+            ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' // Windows path
+            : '/usr/bin/google-chrome', // Linux path
+        args: browserArgs,
+        defaultViewport: {
+          width: 1280,
+          height: 800,
+          deviceScaleFactor: 2,  // Retina display simulation
+        },
+      });
+    }
+    console.log('Browser launched successfully');
+  } catch (error) {
+    console.error(`Failed to launch browser: ${error instanceof Error ? error.message : String(error)}`);
+    if (error instanceof Error && error.stack) {
+      console.error(error.stack);
+    }
+    throw error; // Re-throw to handle it in the calling function
   }
 
   // Create a new context and set cookies at the context level
@@ -222,33 +238,41 @@ export async function getPage() {
 
 export async function fetchLeetCodePage(url: string) {
   console.log(`Fetching LeetCode page: ${url}`);
+  let browser = null;
   
   try {
-    const { browser, page } = await getPage();
+    console.log('Initializing browser...');
+    const browserSetup = await getPage();
+    browser = browserSetup.browser;
+    const page = browserSetup.page;
     
-    // Enable request interception for debugging
-    await page.setRequestInterception(true);
+    console.log('Browser initialized successfully');
     
-    // Log requests and responses
-    page.on('request', request => {
-      console.log(`>> Request: ${request.method()} ${request.url()}`);
-      request.continue();
-    });
-    
-    page.on('response', response => {
-      console.log(`<< Response: ${response.status()} ${response.url()}`);
-    });
+    // Simplified request handling for serverless environment
+    // Only intercept if not in serverless to reduce memory usage
+    if (!isServerless) {
+      await page.setRequestInterception(true);
+      
+      page.on('request', request => {
+        console.log(`>> Request: ${request.method()} ${request.url()}`);
+        request.continue();
+      });
+      
+      page.on('response', response => {
+        console.log(`<< Response: ${response.status()} ${response.url()}`);
+      });
+    }
     
     // Set referrer to mimic same-origin navigation
     await page.setExtraHTTPHeaders({
       'referer': 'https://leetcode.com/'
     });
     
-    // Navigate to the URL with a longer timeout
+    // Navigate to the URL with a longer timeout but simpler wait condition for serverless
     console.log(`Navigating to ${url}`);
     const response = await page.goto(url, { 
-      waitUntil: 'networkidle0',
-      timeout: 60000 
+      waitUntil: isServerless ? 'domcontentloaded' : 'networkidle0',
+      timeout: 30000 // Reduced timeout for serverless environments
     });
     
     if (!response) {
@@ -256,27 +280,39 @@ export async function fetchLeetCodePage(url: string) {
     }
     
     const statusCode = response.status();
-    const headers = response.headers();
-    
-    // Print response details
     console.log(`Response status code: ${statusCode}`);
-    console.log(`Response headers: ${JSON.stringify(headers, null, 2)}`);
     
-    // Get the page content
+    if (statusCode >= 400) {
+      throw new Error(`HTTP error: ${statusCode}`);
+    }
+    
+    // Get the page content with a timeout
+    console.log('Getting page content...');
     const htmlContent = await page.content();
     
-    // Print content sample
-    const contentSample = htmlContent.length > 200 ? htmlContent.substring(0, 200) + '...' : htmlContent;
-    console.log(`Content sample: ${contentSample}`);
+    // Print content length for debugging
     console.log(`Content length: ${htmlContent.length}`);
     
-    // Close the browser
+    // Close the browser properly
+    console.log('Closing browser...');
     await browser.close();
+    browser = null;
     
     return { htmlContent, statusCode };
   } catch (error) {
     console.error(`Puppeteer error: ${error instanceof Error ? error.message : String(error)}`);
     console.error(error instanceof Error && error.stack ? error.stack : 'No stack trace available');
+    
+    // Make sure browser is closed even if there's an error
+    if (browser) {
+      try {
+        console.log('Closing browser after error...');
+        await browser.close();
+      } catch (closeError) {
+        console.error(`Error closing browser: ${closeError instanceof Error ? closeError.message : String(closeError)}`);
+      }
+    }
+    
     return { htmlContent: null, statusCode: 500 };
   }
 }
