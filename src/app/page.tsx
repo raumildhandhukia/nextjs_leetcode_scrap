@@ -6,7 +6,26 @@ import Image from "next/image";
 export default function Home() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<ScrapeResult | null>(null);
+
+  // Define the types for the scrape result
+  interface CompanyTag {
+    name: string;
+    timesEncountered: number;
+  }
+
+  interface CompanyTags {
+    three_months?: CompanyTag[];
+    six_months?: CompanyTag[];
+    more_than_six_months?: CompanyTag[];
+  }
+
+  interface ScrapeResult {
+    url: string;
+    statusCode: number;
+    contentLength: number;
+    companyTags?: CompanyTags;
+  }
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -126,7 +145,7 @@ export default function Home() {
                       <div>
                         <h4 className="font-medium mb-2">Last 3 Months</h4>
                         <div className="flex flex-wrap gap-2">
-                          {result.companyTags.three_months.map((company: any, index: number) => (
+                          {result.companyTags.three_months.map((company: CompanyTag, index: number) => (
                             <div key={index} className="bg-blue-100 dark:bg-blue-900 px-3 py-1 rounded-full text-sm">
                               <span className="font-medium">{company.name}</span>
                               <span className="ml-1 text-gray-600 dark:text-gray-300">({company.timesEncountered})</span>
@@ -141,7 +160,7 @@ export default function Home() {
                       <div className="mt-4">
                         <h4 className="font-medium mb-2">Last 6 Months</h4>
                         <div className="flex flex-wrap gap-2">
-                          {result.companyTags.six_months.map((company: any, index: number) => (
+                          {result.companyTags.six_months.map((company: CompanyTag, index: number) => (
                             <div key={index} className="bg-green-100 dark:bg-green-900 px-3 py-1 rounded-full text-sm">
                               <span className="font-medium">{company.name}</span>
                               <span className="ml-1 text-gray-600 dark:text-gray-300">({company.timesEncountered})</span>
@@ -156,7 +175,7 @@ export default function Home() {
                       <div className="mt-4">
                         <h4 className="font-medium mb-2">More Than 6 Months</h4>
                         <div className="flex flex-wrap gap-2">
-                          {result.companyTags.more_than_six_months.map((company: any, index: number) => (
+                          {result.companyTags.more_than_six_months.map((company: CompanyTag, index: number) => (
                             <div key={index} className="bg-purple-100 dark:bg-purple-900 px-3 py-1 rounded-full text-sm">
                               <span className="font-medium">{company.name}</span>
                               <span className="ml-1 text-gray-600 dark:text-gray-300">({company.timesEncountered})</span>

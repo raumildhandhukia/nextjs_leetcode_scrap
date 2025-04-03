@@ -94,7 +94,7 @@ export async function getPage() {
         domain: ".leetcode.com",
         path: "/",
         secure: true,
-        sameSite: "Lax" as "Lax"
+        sameSite: "Lax" as const
       },
       {
         name: "LEETCODE_SESSION",
@@ -192,7 +192,7 @@ export async function getPage() {
         domain: cookie.domain || '.leetcode.com',
         path: cookie.path || '/',
         secure: cookie.secure || false,
-        sameSite: cookie.sameSite as any || undefined
+        sameSite: cookie.sameSite || undefined
       };
       await context.setCookie(cookieToSet);
     }

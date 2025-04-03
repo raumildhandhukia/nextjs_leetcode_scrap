@@ -3,7 +3,19 @@
  * This implements the same functionality as the Python BeautifulSoup version
  * but using pure TypeScript/JavaScript
  */
-export function extractCompanyTags(htmlContent: string): any {
+// Define the types for company tags
+interface CompanyTag {
+  name: string;
+  timesEncountered: number;
+}
+
+interface CompanyTags {
+  three_months?: CompanyTag[];
+  six_months?: CompanyTag[];
+  more_than_six_months?: CompanyTag[];
+}
+
+export function extractCompanyTags(htmlContent: string): CompanyTags | null {
   try {
     console.log("Starting company tag extraction...");
     
